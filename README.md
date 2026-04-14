@@ -4,7 +4,7 @@ REST API para gestión de empleados construida con Spring Boot 3 y Java 21. Incl
 
 ## Stack
 
-- **Java 21** · **Spring Boot 3.3.5** · **Maven**
+- **Java 25** · **Spring Boot 3.4.4** · **Maven**
 - **Spring Data JPA** · **PostgreSQL** (producción) · **H2** (tests)
 - **Bean Validation** — validación en DTOs con mensajes de error descriptivos
 - **Springdoc OpenAPI** — documentación interactiva en `/swagger-ui.html`
@@ -41,7 +41,7 @@ Controller → Service (interface + impl) → Repository → Entity
 
 ### Requisitos
 
-- Java 21+
+- Java 21+ (probado con Java 25)
 - Maven 3.8+
 - PostgreSQL 14+
 
