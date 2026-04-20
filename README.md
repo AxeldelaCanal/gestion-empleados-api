@@ -1,13 +1,32 @@
 # Gestión de Empleados API
 
-REST API para gestión de empleados construida con Spring Boot 3 y Java 21. Incluye paginación, filtros dinámicos, manejo global de excepciones y cobertura de tests con JUnit 5 y Mockito.
+![Java](https://img.shields.io/badge/Java-21+-orange?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.4.4-6DB33F?logo=springboot&logoColor=white)
+![Maven](https://img.shields.io/badge/Maven-3.8+-C71A36?logo=apachemaven&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-17%20passing-brightgreen?logo=junit5&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+REST API para gestión de empleados con arquitectura en capas, filtros dinámicos, paginación y suite de tests con JUnit 5 + Mockito.
+
+## Qué demuestra este proyecto
+
+| Concepto | Implementación |
+|----------|---------------|
+| Arquitectura en capas | `Controller → Service (interface + impl) → Repository → Entity` |
+| Testing con mocks | `EmpleadoServiceTest` — lógica de negocio aislada con Mockito |
+| Integration testing | `EmpleadoControllerTest` — API end-to-end con MockMvc + H2 |
+| Filtros dinámicos | JPQL con parámetros opcionales (`nombre`, `departamento`) |
+| Paginación | Spring Data `Pageable` con sorting configurable |
+| Manejo de errores | `GlobalExceptionHandler` — respuestas estructuradas para 400, 404, 500 |
+| Validación | Bean Validation en DTOs con mensajes descriptivos |
+| Documentación | Swagger/OpenAPI en `/swagger-ui.html` |
 
 ## Stack
 
-- **Java 25** · **Spring Boot 3.4.4** · **Maven**
+- **Java 21** · **Spring Boot 3.4.4** · **Maven**
 - **Spring Data JPA** · **PostgreSQL** (producción) · **H2** (tests)
 - **Bean Validation** — validación en DTOs con mensajes de error descriptivos
-- **Springdoc OpenAPI** — documentación interactiva en `/swagger-ui.html`
+- **Springdoc OpenAPI 2.6** — documentación interactiva en `/swagger-ui.html`
 - **JUnit 5 + Mockito** — unit tests e integration tests
 
 ## Endpoints
@@ -22,9 +41,11 @@ REST API para gestión de empleados construida con Spring Boot 3 y Java 21. Incl
 
 ### Filtros disponibles en GET /api/empleados
 
-```
+```http
 GET /api/empleados?nombre=Juan&departamento=Backend&page=0&size=10&sort=apellido
 ```
+
+Todos los parámetros son opcionales y combinables. Sin filtros devuelve todos los empleados paginados.
 
 ## Arquitectura
 
@@ -32,16 +53,58 @@ GET /api/empleados?nombre=Juan&departamento=Backend&page=0&size=10&sort=apellido
 Controller → Service (interface + impl) → Repository → Entity
 ```
 
-- **Controller** — recibe requests, delega al service, retorna respuestas HTTP
-- **Service** — lógica de negocio, mapeo Entity ↔ DTO
-- **Repository** — acceso a datos con JPQL para filtros dinámicos
-- **GlobalExceptionHandler** — manejo centralizado de errores (404, 400, 409, 500)
+- **Controller** — recibe requests, delega al service, retorna respuestas HTTP correctas (200, 201, 204, 404, 400)
+- **Service** — lógica de negocio, mapeo Entity ↔ DTO. La interface desacopla la implementación del controller
+- **Repository** — acceso a datos con JPQL para filtros dinámicos opcionales
+- **GlobalExceptionHandler** — manejo centralizado de errores con respuestas estructuradas tipo `ApiError`
+
+### GlobalExceptionHandler — respuesta de error estructurada
+
+```json
+// POST /api/empleados con campo inválido → 400 Bad Request
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Error de validación",
+  "fieldErrors": {
+    "email": "debe ser una dirección de correo bien formada",
+    "nombre": "no debe estar vacío"
+  }
+}
+```
+
+## Tests
+
+Los tests corren con H2 en memoria — no necesitan PostgreSQL instalado.
+
+```bash
+mvn test
+```
+
+### Suite de tests
+
+| Clase | Tipo | Tests | Qué verifica |
+|-------|------|-------|--------------|
+| `EmpleadoServiceTest` | Unit (Mockito) | 8 | Lógica de negocio aislada del contexto Spring |
+| `EmpleadoControllerTest` | Integration (MockMvc + H2) | 9 | API end-to-end, respuestas HTTP, manejo de errores |
+
+**`EmpleadoServiceTest`** — testea la lógica de negocio aislada:
+- `findAll` — retorna página correcta / página vacía
+- `findById` — retorna empleado / lanza `ResourceNotFoundException` (→ 404)
+- `create` — persiste y retorna el empleado creado
+- `update` — actualiza correctamente / lanza excepción si no existe
+- `delete` — elimina correctamente / lanza excepción si no existe
+
+**`EmpleadoControllerTest`** — testea la API de punta a punta con H2:
+- Paginación y filtros dinámicos (nombre, departamento)
+- Respuestas correctas (200, 201, 204)
+- Manejo de errores (400 con `fieldErrors`, 404 con mensaje descriptivo)
 
 ## Setup
 
 ### Requisitos
 
-- Java 21+ (probado con Java 25)
+- Java 21+
 - Maven 3.8+
 - PostgreSQL 14+
 
@@ -53,7 +116,7 @@ CREATE DATABASE gestion_empleados;
 
 ### Configuración
 
-Editá `src/main/resources/application.properties` con tus credenciales de PostgreSQL:
+Editá `src/main/resources/application.properties`:
 
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5432/gestion_empleados
@@ -67,35 +130,7 @@ spring.datasource.password=tu_password
 mvn spring-boot:run
 ```
 
-La API queda disponible en `http://localhost:8080`.  
-Swagger UI: `http://localhost:8080/swagger-ui.html`
-
-## Tests
-
-Los tests corren con H2 en memoria — no necesitan PostgreSQL instalado.
-
-```bash
-mvn test
-```
-
-### Cobertura
-
-| Clase | Tipo | Tests |
-|-------|------|-------|
-| `EmpleadoServiceTest` | Unit (Mockito) | 8 tests |
-| `EmpleadoControllerTest` | Integration (MockMvc + H2) | 9 tests |
-
-**`EmpleadoServiceTest`** — testea la lógica de negocio aislada del contexto Spring:
-- `findAll` — retorna página correcta / página vacía
-- `findById` — retorna empleado / lanza `ResourceNotFoundException`
-- `create` — persiste y retorna el empleado
-- `update` — actualiza correctamente / lanza excepción si no existe
-- `delete` — elimina correctamente / lanza excepción si no existe
-
-**`EmpleadoControllerTest`** — testea la API de punta a punta con base de datos real (H2):
-- Paginación y filtros dinámicos
-- Respuestas correctas (200, 201, 204)
-- Manejo de errores (400 con `fieldErrors`, 404 con mensaje)
+Disponible en `http://localhost:8080` · Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 ## Estructura del proyecto
 
@@ -109,7 +144,7 @@ src/
 │   │   ├── exception/       # GlobalExceptionHandler, ResourceNotFoundException, ApiError
 │   │   ├── model/           # Empleado (entity)
 │   │   ├── repository/      # EmpleadoRepository
-│   │   └── service/         # EmpleadoService + EmpleadoServiceImpl
+│   │   └── service/         # EmpleadoService (interface) + EmpleadoServiceImpl
 │   └── resources/
 │       └── application.properties
 └── test/
@@ -119,3 +154,7 @@ src/
     └── resources/
         └── application.properties   # H2 config para tests
 ```
+
+## Licencia
+
+MIT
